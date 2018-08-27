@@ -40,6 +40,8 @@ px4_add_module(
 		syslink_memory.cpp
 		syslink_params.c
 		syslink.c
+	MODULE_CONFIG
+		module.yaml
 	DEPENDS
 	)
 

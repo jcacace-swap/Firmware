@@ -1,0 +1,9 @@
+module_name: Syslink
+serial_config:
+    - command: |
+        syslink start
+        mavlink start -d /dev/bridge0 -b 57600 -m osd -r 40000
+      port_config_param:
+        name: SLNK_CONFIG
+        group: Syslink
+
