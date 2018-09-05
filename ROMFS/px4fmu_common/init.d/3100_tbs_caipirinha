@@ -54,7 +54,11 @@ then
 	param set PWM_MIN 900
 	param set PWM_MAX 2100
 
-	param set SYS_COMPANION 157600
+	# TELEM2 config
+	param set MAV_1_CONFIG 2
+	param set MAV_1_RATE 1000
+	param set MAV_1_MODE 3
+	param set SER_TEL2_BAUD 57600
 fi
 
 set MIXER caipi
