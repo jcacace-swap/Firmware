@@ -22,9 +22,7 @@ To start the simulation clone the repository including all the submodules:
 5. To launch the Iris version equipped with the camera, you should load the gazebo configuration. You could use the __load_sitl_conf.sh__ script placed in the sitl_gazebo folder
 
 		$ cd Tools/sitl_gazebo && source load_sitl_conf.sh
-        $ roslaunch px4 iris_with_camera_sitl.launch 
-        
-    
+   
 
 ### Setup the environment
 In ordert to speed up the configuration process could be convienent to add the following link to your .bashrc file:
