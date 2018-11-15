@@ -8,7 +8,7 @@ To start the simulation clone the repository including all the submodules:
         
 4. Compile and launch it!		
 		
-        $ cd px4/Firmware && make posix_sitl_default gazebo -j4
+        $ cd Firmware && make posix_sitl_default gazebo -j4
 
     During the installation you should install some additional dependencies (follow the instruction in the compilation shell):
     
@@ -16,6 +16,11 @@ To start the simulation clone the repository including all the submodules:
         $ sudo apt-get install python-jinja2
         $ sudo pip install numpy toml
         $ sudo apt-get install protobuf-c*
+
+ To allow ROS/FCU communication you should install Mavros package:
+
+        $ sudo apt-get install protobuf-c*
+				
 
 
 5. To launch the Iris version equipped with the camera, you should load the gazebo configuration. You could use the __load_sitl_conf.sh__ script placed in the sitl_gazebo folder
