@@ -13,7 +13,6 @@ To start the simulation clone the repository including all the submodules:
     During the installation you should install some additional dependencies (follow the instruction in the compilation shell):
     
         $ sudo apt-get install python-pip
-        $ pip install --upgrade pip
         $ sudo apt-get install python-jinja2
         $ sudo pip install numpy toml
         $ sudo apt-get install protobuf-c*
