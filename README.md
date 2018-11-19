@@ -17,10 +17,18 @@ To start the simulation clone the repository including all the submodules:
         $ sudo pip install numpy toml
         $ sudo apt-get install protobuf-c*
 
- To allow ROS/FCU communication you should install Mavros package:
+    To allow ROS/FCU communication you should install Mavros package:
 
-        $ sudo apt-get install protobuf-c*
-				
+        $ sudo apt-get install ros-kinetic-mavros-*
+    
+    Now you can install the geographic dataset
+
+        $ sudo /opt/ros/kinetic/lib/mavros/install_geographiclib_datasets.sh
+
+
+    Finally, some robots use custom sensors from hector-quadrotor stack, install it:
+
+        $ sudo apt-get install ros-kinetic-hector-*
 
 
 5. To launch the Iris version equipped with the camera, you should load the gazebo configuration. You could use the __load_sitl_conf.sh__ script placed in the sitl_gazebo folder
@@ -77,6 +85,13 @@ The main differences with the original Firmware repository lie in the configurat
 		Firmware/posix-configs
 		Firmware/Tools/sitl-gazebo/models
 		Firmware/Tools/sitl-gazebo/launch
+
+
+## Supported robots:
+     
+     * iris_with_camera
+     * iris_with_sensors
+
 
 
 
