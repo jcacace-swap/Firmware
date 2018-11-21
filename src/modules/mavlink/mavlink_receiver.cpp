@@ -793,20 +793,24 @@ void
 MavlinkReceiver::handle_message_distance_sensor(mavlink_message_t *msg)
 {
 	/* distance sensor */
+	//printf("RCV distance_sensor");	//MIC
 	mavlink_distance_sensor_t dist_sensor;
 	mavlink_msg_distance_sensor_decode(msg, &dist_sensor);
 
 	struct distance_sensor_s d;
 	memset(&d, 0, sizeof(d));
 
-	d.timestamp = dist_sensor.time_boot_ms * 1000; /* ms to us */
+	//d.timestamp = dist_sensor.time_boot_ms * 1000; /* ms to us */
+	d.timestamp = hrt_absolute_time();	//MIC
 	d.min_distance = float(dist_sensor.min_distance) * 1e-2f; /* cm to m */
 	d.max_distance = float(dist_sensor.max_distance) * 1e-2f; /* cm to m */
 	d.current_distance = float(dist_sensor.current_distance) * 1e-2f; /* cm to m */
+	//d.current_distance = float(1);	//MIC
 	d.type = dist_sensor.type;
 	d.id = 	MAV_DISTANCE_SENSOR_LASER;
 	d.orientation = dist_sensor.orientation;
 	d.covariance = dist_sensor.covariance;
+	d.signal_quality = 100;			//MIC
 
 	/// TODO Add sensor rotation according to MAV_SENSOR_ORIENTATION enum
 
