@@ -44,6 +44,7 @@
 
 #include "Commander.hpp"
 
+#include <iostream>
 /* commander module headers */
 #include "accelerometer_calibration.h"
 #include "airspeed_calibration.h"
@@ -1406,6 +1407,8 @@ Commander::run()
 
 	while (!should_exit()) {
 
+
+
 		transition_result_t arming_ret = TRANSITION_NOT_CHANGED;
 
 		/* update parameters */
@@ -1504,6 +1507,9 @@ Commander::run()
 
 		/* handle power button state */
 		orb_check(power_button_state_sub, &updated);
+
+
+
 
 		if (updated) {
 			power_button_state_s button_state;
@@ -2818,6 +2824,8 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 
 		int new_mode = _flight_mode_slots[sp_man.mode_slot];
 
+
+
 		if (new_mode < 0) {
 			/* slot is unused */
 			res = TRANSITION_NOT_CHANGED;
@@ -2935,6 +2943,8 @@ Commander::set_main_state_rc(const vehicle_status_s &status_local, bool *changed
 					/* fall back to manual */
 					new_mode = commander_state_s::MAIN_STATE_MANUAL;
 					print_reject_mode("STABILIZED");
+
+
 					res = main_state_transition(status_local, new_mode, status_flags, &internal_state);
 
 					if (res != TRANSITION_DENIED) {

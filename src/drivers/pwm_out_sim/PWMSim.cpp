@@ -33,6 +33,8 @@
 
 #include "PWMSim.hpp"
 
+#include <iostream>
+
 PWMSim::PWMSim() :
 	CDev(PWM_OUTPUT0_DEVICE_PATH),
 	_perf_control_latency(perf_alloc(PC_ELAPSED, "pwm_out_sim control latency"))
@@ -223,6 +225,9 @@ PWMSim::run()
 			if (_control_subs[i] >= 0) {
 				if (_poll_fds[poll_id].revents & POLLIN) {
 					orb_copy(_control_topics[i], _control_subs[i], &_controls[i]);
+					//printf("In PWMSIm, control[%d]: %f %f %f %f\n", i, (double)_controls[i].control[0], (double)_controls[i].control[1], (double)_controls[i].control[2], (double)_controls[i].control[3]); 
+
+
 				}
 
 				poll_id++;
@@ -233,6 +238,7 @@ PWMSim::run()
 		if (_armed && _mixers != nullptr) {
 
 			/* do mixing */
+
 			unsigned num_outputs = _mixers->mix(&_actuator_outputs.output[0], _num_outputs);
 			_actuator_outputs.noutputs = num_outputs;
 
@@ -244,12 +250,16 @@ PWMSim::run()
 			}
 
 			/* iterate actuators */
+
+
+			//std::cout << "IN PWMSim, output: " << _actuator_outputs.output[0] << " " << _actuator_outputs.output[1] << " " << _actuator_outputs.output[2] << " " << _actuator_outputs.output[3] << std::endl;
 			for (unsigned i = 0; i < num_outputs; i++) {
 				/* last resort: catch NaN, INF and out-of-band errors */
 				if (i < _actuator_outputs.noutputs &&
 				    PX4_ISFINITE(_actuator_outputs.output[i]) &&
 				    _actuator_outputs.output[i] >= -1.0f &&
 				    _actuator_outputs.output[i] <= 1.0f) {
+
 					/* scale for PWM output 1000 - 2000us */
 					_actuator_outputs.output[i] = 1500 + (500 * _actuator_outputs.output[i]);
 
@@ -288,6 +298,8 @@ PWMSim::run()
 			/* and publish for anyone that cares to see */
 			_actuator_outputs.timestamp = hrt_absolute_time();
 			orb_publish(ORB_ID(actuator_outputs), _outputs_pub, &_actuator_outputs);
+
+			//!Pubblicato su orb -> letto da mavlink_messages
 
 			// use first valid timestamp_sample for latency tracking
 			for (int i = 0; i < actuator_controls_s::NUM_ACTUATOR_CONTROL_GROUPS; i++) {
@@ -343,6 +355,7 @@ PWMSim::control_callback(uintptr_t handle, uint8_t control_group, uint8_t contro
 {
 	const actuator_controls_s *controls = (actuator_controls_s *)handle;
 
+	//printf ("Data: %f\n", (double)controls[control_group].control[control_index]);
 	input = controls[control_group].control[control_index];
 
 	return 0;

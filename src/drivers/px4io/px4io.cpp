@@ -1903,6 +1903,7 @@ PX4IO::io_publish_pwm_outputs()
 	outputs.timestamp = hrt_absolute_time();
 	outputs.noutputs = _max_actuators;
 
+
 	/* convert from register format to float */
 	for (unsigned i = 0; i < _max_actuators; i++) {
 		outputs.output[i] = ctl[i];

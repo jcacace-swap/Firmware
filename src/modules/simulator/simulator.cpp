@@ -192,6 +192,7 @@ extern "C" {
 
 	int simulator_main(int argc, char *argv[])
 	{
+
 		int ret = 0;
 
 		if (argc > 2 && strcmp(argv[1], "start") == 0) {

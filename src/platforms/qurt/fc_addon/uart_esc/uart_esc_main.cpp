@@ -104,7 +104,7 @@ static void stop();
 
 /** task main trampoline function */
 static void	task_main_trampoline(int argc, char *argv[]);
-
+sssssssssssssssssssssss
 /** uart_esc thread primary entry point */
 static void task_main(int argc, char *argv[]);
 
@@ -312,6 +312,8 @@ void task_main(int argc, char *argv[])
 
 		// Main loop
 		while (!_task_should_exit) {
+mavlink_and_console_log_info(&mavlink_log_pub, "Takeoff detected");
+sssssssss
 			int pret = px4_poll(&fds[0], (sizeof(fds) / sizeof(fds[0])), 100);
 
 			/* timed out - periodic check for _task_should_exit */

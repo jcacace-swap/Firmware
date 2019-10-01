@@ -105,6 +105,9 @@
 #include <uORB/topics/vehicle_magnetometer.h>
 #include <uORB/uORB.h>
 
+
+#include <iostream>
+
 using matrix::wrap_2pi;
 
 static uint16_t cm_uint16_from_m_float(float m);
@@ -2593,6 +2596,8 @@ protected:
 
 	bool send(const hrt_abstime t)
 	{
+
+
 		actuator_outputs_s act;
 
 		if (_act_sub->update(&_act_time, &act)) {
@@ -2602,6 +2607,7 @@ protected:
 
 			msg.time_usec = act.timestamp;
 			msg.port = N;
+						
 			msg.servo1_raw = act.output[0];
 			msg.servo2_raw = act.output[1];
 			msg.servo3_raw = act.output[2];
@@ -2621,6 +2627,8 @@ protected:
 
 			mavlink_msg_servo_output_raw_send_struct(_mavlink->get_channel(), &msg);
 
+			//printf("Actuator output: %f %f %f %f!\n", (double)msg.servo1_raw, (double)msg.servo2_raw, (double)msg.servo3_raw, (double)msg.servo4_raw);
+		
 			return true;
 		}
 
@@ -2721,7 +2729,10 @@ protected:
 				msg.controls[i] = att_ctrl.control[i];
 			}
 
-			mavlink_msg_actuator_control_target_send_struct(_mavlink->get_channel(), &msg);
+
+
+
+			//mavlink_msg_actuator_control_target_send_struct(_mavlink->get_channel(), &msg);
 
 			return true;
 		}
@@ -2760,6 +2771,7 @@ public:
 
 	unsigned get_size()
 	{
+
 		return MAVLINK_MSG_ID_HIL_ACTUATOR_CONTROLS_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES;
 	}
 
@@ -2776,12 +2788,13 @@ private:
 protected:
 	explicit MavlinkStreamHILActuatorControls(Mavlink *mavlink) : MavlinkStream(mavlink),
 		_status_sub(_mavlink->add_orb_subscription(ORB_ID(vehicle_status))),
-		_act_sub(_mavlink->add_orb_subscription(ORB_ID(actuator_outputs))),
+		//_act_sub(_mavlink->add_orb_subscription(ORB_ID(actuator_outputs))),
 		_act_time(0)
 	{}
 
 	bool send(const hrt_abstime t)
 	{
+
 		actuator_outputs_s act;
 
 		if (_act_sub->update(&_act_time, &act)) {
@@ -2842,6 +2855,9 @@ protected:
 					for (unsigned i = 0; i < 16; i++) {
 						if (act.output[i] > PWM_DEFAULT_MIN / 2) {
 							if (i < n) {
+
+
+
 								/* scale PWM out 900..2100 us to 0..1 for rotors */
 								msg.controls[i] = (act.output[i] - PWM_DEFAULT_MIN) / (PWM_DEFAULT_MAX - PWM_DEFAULT_MIN);
 
@@ -2849,7 +2865,6 @@ protected:
 								/* scale PWM out 900..2100 us to -1..1 for other channels */
 								msg.controls[i] = (act.output[i] - pwm_center) / ((PWM_DEFAULT_MAX - PWM_DEFAULT_MIN) / 2);
 							}
-
 						} else {
 							/* send 0 when disarmed and for disabled channels */
 							msg.controls[i] = 0.0f;
@@ -2881,7 +2896,7 @@ protected:
 				msg.mode = mavlink_base_mode;
 				msg.flags = 0;
 
-				mavlink_msg_hil_actuator_controls_send_struct(_mavlink->get_channel(), &msg);
+			mavlink_msg_hil_actuator_controls_send_struct(_mavlink->get_channel(), &msg);
 
 				return true;
 			}

@@ -378,6 +378,9 @@ MulticopterAttitudeControl::vehicle_land_detected_poll()
 void
 MulticopterAttitudeControl::control_attitude(float dt)
 {
+
+
+
 	vehicle_attitude_setpoint_poll();
 	_thrust_sp = _v_att_sp.thrust;
 
@@ -758,15 +761,22 @@ MulticopterAttitudeControl::run()
 				_actuators.control[2] = (PX4_ISFINITE(_att_control(2))) ? _att_control(2) : 0.0f;
 				_actuators.control[3] = (PX4_ISFINITE(_thrust_sp)) ? _thrust_sp : 0.0f;
 				_actuators.control[7] = _v_att_sp.landing_gear;
+
 				_actuators.timestamp = hrt_absolute_time();
 				_actuators.timestamp_sample = _sensor_gyro.timestamp;
 
+
+				
+				
 				/* scale effort by battery status */
 				if (_bat_scale_en.get() && _battery_status.scale > 0.0f) {
 					for (int i = 0; i < 4; i++) {
 						_actuators.control[i] *= _battery_status.scale;
 					}
 				}
+				
+
+				//printf("MC_ATT_CTRL: Roll %f Pitch %f Yaw %f Thrust %f \n", (double)_actuators.control[0], (double)_actuators.control[1], (double)_actuators.control[2], (double)_actuators.control[3]);
 
 				if (!_actuators_0_circuit_breaker_enabled) {
 					if (_actuators_0_pub != nullptr) {

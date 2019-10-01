@@ -42,6 +42,8 @@
 #include <cstring>
 #include <ctype.h>
 
+#include <iostream>
+
 #define debug(fmt, args...)	do { } while(0)
 //#define debug(fmt, args...)	do { printf("[mixer] " fmt "\n", ##args); } while(0)
 
@@ -56,9 +58,8 @@ float
 Mixer::get_control(uint8_t group, uint8_t index)
 {
 	float	value;
-
 	_control_cb(_cb_handle, group, index, value);
-
+	
 	return value;
 }
 
@@ -212,6 +213,7 @@ NullMixer *
 NullMixer::from_text(const char *buf, unsigned &buflen)
 {
 	NullMixer *nm = nullptr;
+
 
 	/* enforce that the mixer ends with a new line */
 	if (!string_well_formed(buf, buflen)) {

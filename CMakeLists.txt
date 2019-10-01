@@ -361,7 +361,6 @@ execute_process(COMMAND cmake -E make_directory ${ep_base}/Install/include)
 #=============================================================================
 # external modules
 #
-set(external_module_paths)
 if (NOT EXTERNAL_MODULES_LOCATION STREQUAL "")
 	message(STATUS "External modules: ${EXTERNAL_MODULES_LOCATION}")
 	add_subdirectory("${EXTERNAL_MODULES_LOCATION}/src" external_modules)
@@ -382,7 +381,13 @@ add_subdirectory(src/modules/systemlib EXCLUDE_FROM_ALL) # TODO: split into libr
 add_subdirectory(src/modules/uORB EXCLUDE_FROM_ALL) # TODO: platform layer
 add_subdirectory(src/drivers/boards EXCLUDE_FROM_ALL)
 
+
+#Add single motor control
+set (config_module_list ${config_module_list} modules/mc_sm_control)
+set (config_module_list ${config_module_list} modules/sm_ctrl_test)
 foreach(module ${config_module_list})
+
+	message( ${module} )
 	add_subdirectory(src/${module})
 endforeach()
 

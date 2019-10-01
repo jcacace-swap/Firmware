@@ -79,6 +79,9 @@ using namespace simulator;
 
 void Simulator::pack_actuator_message(mavlink_hil_actuator_controls_t &msg, unsigned index)
 {
+
+
+	//printf("__mavlink_hil_actuator_controls_t\n");
 	msg.time_usec = hrt_absolute_time();
 
 	bool armed = (_vehicle_status.arming_state == vehicle_status_s::ARMING_STATE_ARMED);
@@ -124,6 +127,7 @@ void Simulator::pack_actuator_message(mavlink_hil_actuator_controls_t &msg, unsi
 		}
 
 		for (unsigned i = 0; i < 16; i++) {
+			
 			if (_actuators[index].output[i] > PWM_DEFAULT_MIN / 2) {
 				if (i < n) {
 					/* scale PWM out PWM_DEFAULT_MIN..PWM_DEFAULT_MAX us to 0..1 for rotors */
@@ -178,6 +182,8 @@ void Simulator::send_controls()
 		mavlink_message_t message = {};
 		pack_actuator_message(hil_act_control, i);
 		mavlink_msg_hil_actuator_controls_encode(0, 200, &message, &hil_act_control);
+
+		//printf("mode: %f %f %f %f\n", hil_act_control.controls[0], hil_act_control.controls[1], hil_act_control.controls[2], hil_act_control.controls[3]);
 		send_mavlink_message(message);
 
 	}
@@ -566,9 +572,10 @@ void Simulator::poll_topics()
 	for (unsigned i = 0; i < (sizeof(_actuator_outputs_sub) / sizeof(_actuator_outputs_sub[0])); i++) {
 
 		orb_check(_actuator_outputs_sub[i], &updated);
-
+		//printf("pool topics: %d %d\n", i, _actuator_outputs_sub[i] );
 		if (updated) {
 			orb_copy(ORB_ID(actuator_outputs), _actuator_outputs_sub[i], &_actuators[i]);
+			//printf("_actuators[%d]: %f %f %f %f\n", i, _actuators[i].output[0], _actuators[i].output[1], _actuators[i].output[2], _actuators[i].output[3]); 
 		}
 	}
 
@@ -746,6 +753,8 @@ void Simulator::pollForMAVLinkMessages(bool publish, int udp_port)
 			}
 
 			len = recvfrom(_fd, _buf, sizeof(_buf), 0, (struct sockaddr *)&_srcaddr, &_addrlen);
+
+			//printf("Len: %d\n", len);
 			// send hearbeat
 			mavlink_heartbeat_t hb = {};
 			mavlink_message_t message = {};
@@ -845,6 +854,7 @@ void Simulator::pollForMAVLinkMessages(bool publish, int udp_port)
 		if (fds[0].revents & POLLIN) {
 			len = recvfrom(_fd, _buf, sizeof(_buf), 0, (struct sockaddr *)&_srcaddr, &_addrlen);
 
+
 			if (len > 0) {
 				mavlink_message_t msg;
 
@@ -852,6 +862,7 @@ void Simulator::pollForMAVLinkMessages(bool publish, int udp_port)
 					if (mavlink_parse_char(MAVLINK_COMM_0, _buf[i], &msg, &udp_status)) {
 						// have a message, handle it
 						handle_message(&msg, publish);
+						//printf("Mavlink message id: %d\n", msg.msgid);
 					}
 				}
 			}

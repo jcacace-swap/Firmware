@@ -60,6 +60,17 @@ mc_att_control start
 mc_pos_control start
 
 #
+# Start Multicopter Single Motor Controller (position + attitude + PWM).
+#
+#mc_sm_control start
+
+#
+# Start Single motor control test.
+#
+#sm_ctrl_test start
+
+
+#
 # Start Multicopter Land Detector.
 #
 land_detector start multicopter

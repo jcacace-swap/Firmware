@@ -33,19 +33,24 @@
  ****************************************************************************/
 
 /**
- * @file ControlMath.cpp
+ * @file SMControlMath.cpp
  */
 
-#include "ControlMath.hpp"
+#include "SMControlMath.hpp"
 #include <platforms/px4_defines.h>
 #include <float.h>
 #include <mathlib/mathlib.h>
+#include <iostream>
 
+using namespace std;
 
-namespace ControlMath
+namespace SMControlMath
 {
 vehicle_attitude_setpoint_s thrustToAttitude(const matrix::Vector3f &thr_sp, const float yaw_sp)
 {
+
+
+	//cout << "In thrustToAttitude: " << thr_sp(0) << " " << thr_sp(1) << " " << thr_sp(2) << endl;
 
 	vehicle_attitude_setpoint_s att_sp = {};
 	att_sp.yaw_body = yaw_sp;
@@ -105,6 +110,12 @@ vehicle_attitude_setpoint_s thrustToAttitude(const matrix::Vector3f &thr_sp, con
 	att_sp.roll_body = euler(0);
 	att_sp.pitch_body = euler(1);
 	att_sp.thrust = thr_sp.length();
+
+
+	// 
+
+
+	//cout << "Attitude: " << att_sp.roll_body << " " << att_sp.pitch_body << " " << att_sp.thrust << endl;
 
 	return att_sp;
 }

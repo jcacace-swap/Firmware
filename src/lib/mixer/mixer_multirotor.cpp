@@ -37,6 +37,7 @@
  * Multi-rotor mixers.
  */
 
+#include <iostream>
 #include "mixer.h"
 
 #include <cfloat>
@@ -97,6 +98,8 @@ MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 	int s[4];
 	int used;
 
+
+
 	/* enforce that the mixer ends with a new line */
 	if (!string_well_formed(buf, buflen)) {
 		return nullptr;
@@ -107,6 +110,8 @@ MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 		return nullptr;
 	}
 
+
+	
 	if (used > (int)buflen) {
 		debug("OVERFLOW: multirotor spec used %d of %u", used, buflen);
 		return nullptr;
@@ -149,6 +154,10 @@ MultirotorMixer::from_text(Mixer::ControlCallback control_cb, uintptr_t cb_handl
 unsigned
 MultirotorMixer::mix(float *outputs, unsigned space)
 {
+
+	//printf("questo mix!\n");
+
+
 	/* Summary of mixing strategy:
 	1) mix roll, pitch and thrust without yaw.
 	2) if some outputs violate range [0,1] then try to shift all outputs to minimize violation ->
@@ -160,6 +169,7 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 	4) scale all outputs to range [idle_speed,1]
 	*/
 
+
 	float		roll    = math::constrain(get_control(0, 0) * _roll_scale, -1.0f, 1.0f);
 	float		pitch   = math::constrain(get_control(0, 1) * _pitch_scale, -1.0f, 1.0f);
 	float		yaw     = math::constrain(get_control(0, 2) * _yaw_scale, -1.0f, 1.0f);
@@ -167,8 +177,11 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 	float		min_out = 1.0f;
 	float		max_out = 0.0f;
 
+
+	//printf("In mixer: %f %f %f %f\n", (double)roll, (double)pitch, (double)yaw, (double)thrust );
 	// clean out class variable used to capture saturation
 	_saturation_status.value = 0;
+
 
 	/* perform initial mix pass yielding unbounded outputs, ignore yaw */
 	for (unsigned i = 0; i < _rotor_count; i++) {
@@ -176,6 +189,9 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 			    pitch * _rotors[i].pitch_scale +
 			    thrust * _rotors[i].thrust_scale;
 
+
+				//printf("%d: Scales roll: %f pitch: %f thrust: %f\n", i, (double)_rotors[i].roll_scale, (double)_rotors[i].pitch_scale,  (double)_rotors[i].thrust_scale);
+	
 		/* calculate min and max output values */
 		if (out < min_out) {
 			min_out = out;
@@ -186,7 +202,12 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 		}
 
 		outputs[i] = out;
+
+		
 	}
+
+	//printf("Output: %f %f %f %f\n", (double)outputs[0], (double)outputs[1], (double)outputs[2], (double)outputs[3]);
+	//printf("Roll: %f\n", (double)roll);
 
 	float boost = 0.0f;		// value added to demanded thrust (can also be negative)
 	float roll_pitch_scale = 1.0f;	// scale for demanded roll and pitch
@@ -273,6 +294,8 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 	// Apply collective thrust reduction, the maximum for one prop
 	thrust -= thrust_reduction;
 
+
+
 	// add yaw and scale outputs to range idle_speed...1
 	for (unsigned i = 0; i < _rotor_count; i++) {
 		outputs[i] = (roll * _rotors[i].roll_scale +
@@ -294,8 +317,14 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 
 		outputs[i] = math::constrain(_idle_speed + (outputs[i] * (1.0f - _idle_speed)), _idle_speed, 1.0f);
 
+
+		//printf("Output[%d]: %f\n", i, (double)outputs[i]);
+
 	}
 
+
+
+	//printf("Output 2: %f %f %f %f\n", (double)outputs[0], (double)outputs[1], (double)outputs[2], (double)outputs[3]);
 	/* slew rate limiting and saturation checking */
 	for (unsigned i = 0; i < _rotor_count; i++) {
 		bool clipping_high = false;
@@ -326,6 +355,7 @@ MultirotorMixer::mix(float *outputs, unsigned space)
 		}
 
 		_outputs_prev[i] = outputs[i];
+
 
 		// update the saturation status report
 		update_saturation_status(i, clipping_high, clipping_low);

@@ -1043,6 +1043,7 @@ MavlinkReceiver::handle_message_set_actuator_control_target(mavlink_message_t *m
 
 	struct actuator_controls_s actuator_controls = {};
 
+
 	bool values_finite =
 		PX4_ISFINITE(set_actuator_control_target.controls[0]) &&
 		PX4_ISFINITE(set_actuator_control_target.controls[1]) &&
@@ -1101,7 +1102,8 @@ MavlinkReceiver::handle_message_set_actuator_control_target(mavlink_message_t *m
 
 				} else {
 					orb_publish(ORB_ID(actuator_controls_0), _actuator_controls_pubs[0], &actuator_controls);
-				}
+
+		}
 
 				break;
 
