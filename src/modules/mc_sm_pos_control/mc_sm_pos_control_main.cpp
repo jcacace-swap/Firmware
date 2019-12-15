@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 /**
- * @file mc_sm_control_main.cpp
+ * @file mc_pos_sm_control_main.cpp
  * Multicopter position controller.
  *
  * The controller has two loops: P loop for position error and PID loop for velocity error.
@@ -49,8 +49,6 @@
 #include <drivers/drv_hrt.h>
 #include <systemlib/hysteresis/hysteresis.h>
 #include <commander/px4_custom_mode.h>
-#include <uORB/topics/sensor_gyro.h>
-
 
 #include <uORB/topics/home_position.h>
 #include <uORB/topics/parameter_update.h>
@@ -61,10 +59,6 @@
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
 #include <uORB/topics/vehicle_trajectory_waypoint.h>
-#include <uORB/topics/vehicle_attitude.h>
-#include <uORB/topics/sensor_correction.h>
-#include <uORB/topics/actuator_controls.h>
-#include <uORB/topics/actuator_outputs.h>
 
 #include <float.h>
 #include <mathlib/mathlib.h>
@@ -78,29 +72,25 @@
 
 #include <iostream>
 
-using namespace std;
-
 /**
  * Multicopter position control app start / stop handling function
  *
  * @ingroup apps
  */
-extern "C" __EXPORT int mc_sm_control_main(int argc, char *argv[]);
+extern "C" __EXPORT int mc_sm_pos_control_main(int argc, char *argv[]);
 
-#define MAX_GYRO_COUNT 3
-
-class MulticopterSingleMotorControl : public control::SuperBlock, public ModuleParams
+class MulticopterSMPositionControl : public control::SuperBlock, public ModuleParams
 {
 public:
 	/**
 	 * Constructor
 	 */
-	MulticopterSingleMotorControl();
+	MulticopterSMPositionControl();
 
 	/**
 	 * Destructor, also kills task.
 	 */
-	~MulticopterSingleMotorControl();
+	~MulticopterSMPositionControl();
 
 	/**
 	 * Start task.
@@ -115,7 +105,7 @@ private:
 	bool 		_in_smooth_takeoff = false; 		/**<true if takeoff ramp is applied */
 
 	orb_advert_t	_att_sp_pub{nullptr};			/**< attitude setpoint publication */
-	orb_advert_t	_local_sm_sp_pub{nullptr};		/**< vehicle local position setpoint publication */
+	orb_advert_t	_local_pos_sp_pub{nullptr};		/**< vehicle local position setpoint publication */
 	orb_advert_t _traj_wp_avoidance_desired_pub{nullptr}; /**< trajectory waypoint desired publication */
 	orb_advert_t _pub_vehicle_command{nullptr};           /**< vehicle command publication */
 	orb_id_t _attitude_setpoint_id{nullptr};
@@ -125,16 +115,9 @@ private:
 	int		_vehicle_land_detected_sub{-1};	/**< vehicle land detected subscription */
 	int		_control_mode_sub{-1};		/**< vehicle control mode subscription */
 	int		_params_sub{-1};			/**< notification of parameter updates */
-	int		_local_sm_sub{-1};			/**< vehicle local position */
-	int		_home_sm_sub{-1}; 			/**< home position */
+	int		_local_pos_sub{-1};			/**< vehicle local position */
+	int		_home_pos_sub{-1}; 			/**< home position */
 	int		_traj_wp_avoidance_sub{-1};	/**< trajectory waypoint */
-	int		_sensor_gyro_sub[MAX_GYRO_COUNT];	/**< gyro data subscription */
-	int		_sensor_correction_sub{-1};	/**< sensor thermal correction subscription */
-	
-	orb_advert_t	_outputs_pub{nullptr};
-	actuator_outputs_s _actuator_outputs = {};
-
-	unsigned _gyro_count{1};
 
 	int _task_failure_count{0};         /**< counter for task failures */
 
@@ -150,26 +133,17 @@ private:
 	vehicle_trajectory_waypoint_s		_traj_wp_avoidance{};		/**< trajectory waypoint */
 	vehicle_trajectory_waypoint_s		_traj_wp_avoidance_desired{};	/**< desired waypoints, inputs to an obstacle avoidance module */
 
-	int _vehicle_attitude_sub{-1};
-	vehicle_attitude_s 	_att{};
-
-	struct sensor_gyro_s			_sensor_gyro {};	/**< gyro data before thermal correctons and ekf bias estimates are applied */
-	struct sensor_correction_s		_sensor_correction {};	/**< sensor thermal corrections */
-
-	int _selected_gyro{0};
-
-
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::MPC_TKO_RAMP_T>) _takeoff_ramp_time, /**< time constant for smooth takeoff ramp */
-		(ParamFloat<px4::params::MPC_Z_VEL_MAX_UP>) _vel_max_up,
-		(ParamFloat<px4::params::MPC_Z_VEL_MAX_DN>) _vel_max_down,
-		(ParamFloat<px4::params::MPC_LAND_SPEED>) _land_speed,
-		(ParamFloat<px4::params::MPC_TKO_SPEED>) _tko_speed,
-		(ParamFloat<px4::params::MPC_LAND_ALT2>) MPC_LAND_ALT2, // altitude at which speed limit downwards reached minimum speed
-		(ParamInt<px4::params::MPC_POS_MODE>) MPC_POS_MODE,
-		(ParamInt<px4::params::MPC_ALT_MODE>) MPC_ALT_MODE,
-		(ParamFloat<px4::params::MPC_IDLE_TKO>) MPC_IDLE_TKO, /**< time constant for smooth takeoff ramp */
-		(ParamInt<px4::params::MPC_OBS_AVOID>) MPC_OBS_AVOID /**< enable obstacle avoidance */
+		(ParamFloat<px4::params::SM_TKO_RAMP_T>) _takeoff_ramp_time, /**< time constant for smooth takeoff ramp */
+		(ParamFloat<px4::params::SM_Z_VEL_MAX_UP>) _vel_max_up,
+		(ParamFloat<px4::params::SM_Z_VEL_MAX_DN>) _vel_max_down,
+		(ParamFloat<px4::params::SM_LAND_SPEED>) _land_speed,
+		(ParamFloat<px4::params::SM_TKO_SPEED>) _tko_speed,
+		(ParamFloat<px4::params::SM_LAND_ALT2>) SM_LAND_ALT2, // altitude at which speed limit downwards reached minimum speed
+		(ParamInt<px4::params::SM_POS_MODE>) SM_POS_MODE,
+		(ParamInt<px4::params::SM_ALT_MODE>) SM_ALT_MODE,
+		(ParamFloat<px4::params::SM_IDLE_TKO>) SM_IDLE_TKO, /**< time constant for smooth takeoff ramp */
+		(ParamInt<px4::params::SM_OBS_AVOID>) SM_OBS_AVOID /**< enable obstacle avoidance */
 	);
 
 	control::BlockDerivative _vel_x_deriv; /**< velocity derivative in x */
@@ -191,12 +165,12 @@ private:
 
 
 	/**
-	 * Hysteresis that turns true once vehicle is armed for MPC_IDLE_TKO seconds.
+	 * Hysteresis that turns true once vehicle is armed for SM_IDLE_TKO seconds.
 	 * A real vehicle requires some time to accelerates the propellers to IDLE speed. To ensure
-	 * that the propellers reach idle speed before initiating a takeoff, a delay of MPC_IDLE_TKO
+	 * that the propellers reach idle speed before initiating a takeoff, a delay of SM_IDLE_TKO
 	 * is added.
 	 */
-	systemlib::Hysteresis _arm_hysteresis{false}; /**< becomes true once vehicle is armed for MPC_IDLE_TKO seconds */
+	systemlib::Hysteresis _arm_hysteresis{false}; /**< becomes true once vehicle is armed for SM_IDLE_TKO seconds */
 
 	systemlib::Hysteresis _failsafe_land_hysteresis{false}; /**< becomes true if task did not update correctly for LOITER_TIME_BEFORE_DESCEND */
 
@@ -239,7 +213,7 @@ private:
 	 * Publish local position setpoint.
 	 * This is only required for logging.
 	 */
-	void publish_local_sm_sp(const vehicle_local_position_setpoint_s &local_sm_sp);
+	void publish_local_pos_sp(const vehicle_local_position_setpoint_s &local_pos_sp);
 
 	/**
 	 * Checks if smooth takeoff is initiated.
@@ -319,20 +293,14 @@ private:
 	 * Main sensor collection task.
 	 */
 	void		task_main();
-
-
-	void sensor_correction_poll();
-	void test_allocation();
-
-
 };
 
-namespace sm_control
+namespace pos_sm_control
 {
-MulticopterSingleMotorControl	*g_control;
+MulticopterSMPositionControl	*g_control;
 }
 
-MulticopterSingleMotorControl::MulticopterSingleMotorControl() :
+MulticopterSMPositionControl::MulticopterSMPositionControl() :
 	SuperBlock(nullptr, "MPC"),
 	ModuleParams(nullptr),
 	_vel_x_deriv(this, "VELD"),
@@ -344,22 +312,9 @@ MulticopterSingleMotorControl::MulticopterSingleMotorControl() :
 	parameters_update(true);
 	// set failsafe hysteresis
 	_failsafe_land_hysteresis.set_hysteresis_time_from(false, LOITER_TIME_BEFORE_DESCEND);
-
-	/* advertise the mixed control outputs, insist on the first group output */
-	_outputs_pub = orb_advertise(ORB_ID(actuator_outputs), &_actuator_outputs);
-	_actuator_outputs.output[0] = _actuator_outputs.output[1] = _actuator_outputs.output[2] = _actuator_outputs.output[3] = 1000;   
-
-
-	_actuator_outputs.noutputs = 4;
-	for (size_t i = 0; i < sizeof(_actuator_outputs.output) / sizeof(_actuator_outputs.output[0]); i++) {
-		if (i >= 4) {
-			_actuator_outputs.output[i] = NAN;
-		}
-	}
-
 }
 
-MulticopterSingleMotorControl::~MulticopterSingleMotorControl()
+MulticopterSMPositionControl::~MulticopterSMPositionControl()
 {
 	if (_control_task != -1) {
 		// task wakes up every 100ms or so at the longest
@@ -380,11 +335,11 @@ MulticopterSingleMotorControl::~MulticopterSingleMotorControl()
 		} while (_control_task != -1);
 	}
 
-	sm_control::g_control = nullptr;
+	pos_sm_control::g_control = nullptr;
 }
 
 void
-MulticopterSingleMotorControl::warn_rate_limited(const char *string)
+MulticopterSMPositionControl::warn_rate_limited(const char *string)
 {
 	hrt_abstime now = hrt_absolute_time();
 
@@ -395,7 +350,7 @@ MulticopterSingleMotorControl::warn_rate_limited(const char *string)
 }
 
 int
-MulticopterSingleMotorControl::parameters_update(bool force)
+MulticopterSMPositionControl::parameters_update(bool force)
 {
 	bool updated;
 	struct parameter_update_s param_upd;
@@ -417,33 +372,14 @@ MulticopterSingleMotorControl::parameters_update(bool force)
 		_land_speed.set(math::min(_land_speed.get(), _vel_max_down.get()));
 
 		// set trigger time for arm hysteresis
-		_arm_hysteresis.set_hysteresis_time_from(false, (int)(MPC_IDLE_TKO.get() * 1000000.0f));
+		_arm_hysteresis.set_hysteresis_time_from(false, (int)(SM_IDLE_TKO.get() * 1000000.0f));
 	}
 
 	return OK;
 }
 
-
-
 void
-MulticopterSingleMotorControl::sensor_correction_poll()
-{
-	/* check if there is a new message */
-	bool updated;
-	orb_check(_sensor_correction_sub, &updated);
-
-	if (updated) {
-		orb_copy(ORB_ID(sensor_correction), _sensor_correction_sub, &_sensor_correction);
-	}
-
-	/* update the latest gyro selection */
-	if (_sensor_correction.selected_gyro_instance < _gyro_count) {
-		_selected_gyro = _sensor_correction.selected_gyro_instance;
-	}
-}
-
-void
-MulticopterSingleMotorControl::poll_subscriptions()
+MulticopterSMPositionControl::poll_subscriptions()
 {
 	bool updated;
 
@@ -472,19 +408,22 @@ MulticopterSingleMotorControl::poll_subscriptions()
 	orb_check(_control_mode_sub, &updated);
 
 	if (updated) {
-		orb_copy(ORB_ID(vehicle_control_mode), _control_mode_sub, &_control_mode);		
+		orb_copy(ORB_ID(vehicle_control_mode), _control_mode_sub, &_control_mode);
+		
+
+		
 	}
 
-	orb_check(_local_sm_sub, &updated);
+	orb_check(_local_pos_sub, &updated);
 
 	if (updated) {
-		orb_copy(ORB_ID(vehicle_local_position), _local_sm_sub, &_local_pos);
+		orb_copy(ORB_ID(vehicle_local_position), _local_pos_sub, &_local_pos);
 	}
 
-	orb_check(_home_sm_sub, &updated);
+	orb_check(_home_pos_sub, &updated);
 
 	if (updated) {
-		orb_copy(ORB_ID(home_position), _home_sm_sub, &_home_pos);
+		orb_copy(ORB_ID(home_position), _home_pos_sub, &_home_pos);
 	}
 
 	orb_check(_traj_wp_avoidance_sub, &updated);
@@ -492,28 +431,17 @@ MulticopterSingleMotorControl::poll_subscriptions()
 	if (updated) {
 		orb_copy(ORB_ID(vehicle_trajectory_waypoint), _traj_wp_avoidance_sub, &_traj_wp_avoidance);
 	}
-
-	orb_check( _vehicle_attitude_sub, &updated );
-	if( updated ) {
-		orb_copy(ORB_ID(vehicle_attitude), _vehicle_attitude_sub, &_att);
-	}
-
-	//orb_copy(ORB_ID(sensor_gyro), _sensor_gyro_sub[_selected_gyro], &_sensor_gyro);
-
-
-
-
 }
 
 int
-MulticopterSingleMotorControl::task_main_trampoline(int argc, char *argv[])
+MulticopterSMPositionControl::task_main_trampoline(int argc, char *argv[])
 {
-	sm_control::g_control->task_main();
+	pos_sm_control::g_control->task_main();
 	return 0;
 }
 
 void
-MulticopterSingleMotorControl::limit_altitude(vehicle_local_position_setpoint_s &setpoint)
+MulticopterSMPositionControl::limit_altitude(vehicle_local_position_setpoint_s &setpoint)
 {
 	if (_vehicle_land_detected.alt_max < 0.0f || !_home_pos.valid_alt || !_local_pos.v_z_valid) {
 		// there is no altitude limitation present or the required information not available
@@ -540,7 +468,7 @@ MulticopterSingleMotorControl::limit_altitude(vehicle_local_position_setpoint_s 
 }
 
 void
-MulticopterSingleMotorControl::set_vehicle_states(const float &vel_sp_z)
+MulticopterSMPositionControl::set_vehicle_states(const float &vel_sp_z)
 {
 	if (_local_pos.timestamp == 0) {
 		return;
@@ -577,7 +505,7 @@ MulticopterSingleMotorControl::set_vehicle_states(const float &vel_sp_z)
 		_vel_y_deriv.update(0.0f);
 	}
 
-	if (MPC_ALT_MODE.get() && _local_pos.dist_bottom_valid && PX4_ISFINITE(_local_pos.dist_bottom_rate)) {
+	if (SM_ALT_MODE.get() && _local_pos.dist_bottom_valid && PX4_ISFINITE(_local_pos.dist_bottom_rate)) {
 		// terrain following
 		_states.velocity(2) = -_local_pos.dist_bottom_rate;
 		_states.acceleration(2) = _vel_z_deriv.update(-_states.velocity(2));
@@ -607,120 +535,22 @@ MulticopterSingleMotorControl::set_vehicle_states(const float &vel_sp_z)
 	}
 }
 
-
-void MulticopterSingleMotorControl::test_allocation() {
-
-	
-	//Allocation:
-	// Input: 	Froce (1), Moments (3x1), 
-	// Output: 	w^2 (4x1)
-
-	_actuator_outputs.noutputs = 4;
-	for (size_t i = 0; i < sizeof(_actuator_outputs.output) / sizeof(_actuator_outputs.output[0]); i++) {
-		if (i >= 4) {
-				_actuator_outputs.output[i] = NAN;
-		}
-	}
-	_actuator_outputs.timestamp = hrt_absolute_time();
-
-	for(int i=0; i<4; i++)
-		_actuator_outputs.output[i] = 1500 + (500 * _actuator_outputs.output[i]);
-
-	float f = 25;
-	float v[4];
-	v[1] = v[2] = v[3] = 0.0;
-	v[0] = f;
-
-
-	float ro = 1.8e-5;
-	float l = 0.21;
-	float c	= 8e-7;
-
-	float temp1 = float(1.0)/(float(4.0)*ro);
-	float temp2 = float(1.0)/(float(4.0)*c);
-	float temp3 = float(1.0)/(float(2.0)*l*ro);
-
-	matrix::SquareMatrix<float, 4> Mif;
-
-	Mif(0,0) = temp1;
-	Mif(1,0) = temp1;
-	Mif(2,0) = temp1;
-	Mif(3,0) = temp1;
-
-	Mif(0,1) = 0.0;
-	Mif(1,1) = -temp3;
-	Mif(2,1) = 0.0;
-	Mif(3,1) = temp3;
-
-	Mif(0,2) = temp3;
-	Mif(1,2) = 0.0;
-	Mif(2,2) = -temp3;
-	Mif(3,2) = 0.0;
-
-	Mif(0,3) = -temp2;
-	Mif(1,3) = temp2;
-	Mif(2,3) = -temp2;
-	Mif(3,3) = temp2;
-
-	float p[4];
-	p[0] = p[1] = p[2] = p[3] = 0.0;
-	for ( int i = 0; i < 4; i++ ) {
-		p[i] = 0;                     
-		for ( int j = 0; j < 4; j++ ) {
-			p[i] += Mif(i,j) * v[j];       
-		}
-	}
-	for ( int i = 0; i < 4; i++ ) 
-		p[i] = sqrt( p[i] );
-	cout << "w^2: " << p[0] << " " << p[1] << " " << p[2] << " " << p[3] << endl;
-
-
-
-
-
-
-
-
-
-	//_actuator_outputs.output[0] = _actuator_outputs.output[1] = _actuator_outputs.output[2] = _actuator_outputs.output[3] = 1400;
-	orb_publish(ORB_ID(actuator_outputs), _outputs_pub, &_actuator_outputs);
-
-
-
-
-
-} 
-
 void
-MulticopterSingleMotorControl::task_main()
+MulticopterSMPositionControl::task_main()
 {
 	// do subscriptions
 	_vehicle_status_sub = orb_subscribe(ORB_ID(vehicle_status));
 	_vehicle_land_detected_sub = orb_subscribe(ORB_ID(vehicle_land_detected));
 	_control_mode_sub = orb_subscribe(ORB_ID(vehicle_control_mode));
 	_params_sub = orb_subscribe(ORB_ID(parameter_update));
-	_local_sm_sub = orb_subscribe(ORB_ID(vehicle_local_position));
-	_home_sm_sub = orb_subscribe(ORB_ID(home_position));
+	_local_pos_sub = orb_subscribe(ORB_ID(vehicle_local_position));
+	_home_pos_sub = orb_subscribe(ORB_ID(home_position));
 	_traj_wp_avoidance_sub = orb_subscribe(ORB_ID(vehicle_trajectory_waypoint));
-	_vehicle_attitude_sub = orb_subscribe( ORB_ID( vehicle_attitude ));
-	_sensor_correction_sub = orb_subscribe(ORB_ID(sensor_correction));
-
-
-	for (uint8_t i = 0; i < MAX_GYRO_COUNT; i++) {
-		_sensor_gyro_sub[i] = -1;
-	}
-
-	_gyro_count = math::min(orb_group_count(ORB_ID(sensor_gyro)), MAX_GYRO_COUNT);
-
-	if (_gyro_count == 0) {
-		_gyro_count = 1;
-	}
 
 	parameters_update(true);
 
 	// get an initial update for all sensor and status data
 	poll_subscriptions();
-	//sensor_correction_poll();
 
 	// We really need to know from the beginning if we're landed or in-air.
 	orb_copy(ORB_ID(vehicle_land_detected), _vehicle_land_detected_sub, &_vehicle_land_detected);
@@ -733,7 +563,7 @@ MulticopterSingleMotorControl::task_main()
 	// wakeup source
 	px4_pollfd_struct_t fds[1];
 
-	fds[0].fd = _local_sm_sub;
+	fds[0].fd = _local_pos_sub;
 	fds[0].events = POLLIN;
 
 	while (!_task_should_exit) {
@@ -752,9 +582,8 @@ MulticopterSingleMotorControl::task_main()
 		}
 
 		poll_subscriptions();
-		parameters_update(false);
-		sensor_correction_poll();
 
+		parameters_update(false);
 
 		hrt_abstime t = hrt_absolute_time();
 		const float dt = t_prev != 0 ? (t - t_prev) / 1e6f : 0.004f;
@@ -809,7 +638,7 @@ MulticopterSingleMotorControl::task_main()
 
 			/* desired waypoints for obstacle avoidance:
 			 * point_0 contains the current position with the desired velocity
-			 * point_1 contains _sm_sp_triplet.current if valid
+			 * point_1 contains _pos_sp_triplet.current if valid
 			 */
 			update_avoidance_waypoint_desired(_states, setpoint);
 
@@ -861,20 +690,7 @@ MulticopterSingleMotorControl::task_main()
 				execute_avoidance_waypoint();
 			}
 
-			//cout << "pre - generate yaw !" << endl;
-			
-
-
-
-			//Set attitude
-			_control.set_vehicle_attitude( _att.q[0], _att.q[1], _att.q[2], _att.q[3], _att.rollspeed, _att.pitchspeed, _att.yawspeed ); // w, x, y, z
-			
-
 			// Generate desired thrust and yaw.
-			//_control.geometric_tracking_control( _dt );
-			test_allocation();
-			
-			/*
 			_control.generateThrustYawSetpoint(_dt);
 
 			matrix::Vector3f thr_sp = _control.getThrustSetpoint();
@@ -886,29 +702,29 @@ MulticopterSingleMotorControl::task_main()
 			}
 
 			// Fill local position, velocity and thrust setpoint.
-			vehicle_local_position_setpoint_s local_sm_sp{};
-			local_sm_sp.timestamp = hrt_absolute_time();
-			local_sm_sp.x = _control.getPosSp()(0);
-			local_sm_sp.y = _control.getPosSp()(1);
-			local_sm_sp.z = _control.getPosSp()(2);
-			local_sm_sp.yaw = _control.getYawSetpoint();
-			local_sm_sp.yawspeed = _control.getYawspeedSetpoint();
+			vehicle_local_position_setpoint_s local_pos_sp{};
+			local_pos_sp.timestamp = hrt_absolute_time();
+			local_pos_sp.x = _control.getPosSp()(0);
+			local_pos_sp.y = _control.getPosSp()(1);
+			local_pos_sp.z = _control.getPosSp()(2);
+			local_pos_sp.yaw = _control.getYawSetpoint();
+			local_pos_sp.yawspeed = _control.getYawspeedSetpoint();
 
-			local_sm_sp.vx = _control.getVelSp()(0);
-			local_sm_sp.vy = _control.getVelSp()(1);
-			local_sm_sp.vz = _control.getVelSp()(2);
-			thr_sp.copyTo(local_sm_sp.thrust);
+			local_pos_sp.vx = _control.getVelSp()(0);
+			local_pos_sp.vy = _control.getVelSp()(1);
+			local_pos_sp.vz = _control.getVelSp()(2);
+			thr_sp.copyTo(local_pos_sp.thrust);
 
 
-			//printf("Local position: %f %f %f %f %f\n", (double)local_sm_sp.x, (double)local_sm_sp.y, (double)local_sm_sp.z, (double)local_sm_sp.yaw, (double)local_sm_sp.yawspeed);
-			//printf("Local setpoint: %f %f %f\n", (double)setpoint.x, (double)setpoint.y, (double)setpoint.z );
 
 			// Publish local position setpoint (for logging only) and attitude setpoint (for attitude controller).
-			publish_local_sm_sp(local_sm_sp);
-
+			publish_local_pos_sp(local_pos_sp);
 
 			// Fill attitude setpoint. Attitude is computed from yaw and thrust setpoint.
 			_att_sp = SMControlMath::thrustToAttitude(thr_sp, _control.getYawSetpoint());
+
+			//Idea: sostituire thrustToAttitude, con la mioa thrustToAttitude (dove calcolo le mu)
+
 			_att_sp.yaw_sp_move_rate = _control.getYawspeedSetpoint();
 			_att_sp.fw_control_yaw = false;
 			_att_sp.disable_mc_yaw_control = false;
@@ -931,19 +747,9 @@ MulticopterSingleMotorControl::task_main()
 			// they might conflict with each other such as in offboard attitude control.
 			publish_attitude();
 
-			*/
-			
 
 		} else {
-			/*
-
-
-
 			// no flighttask is active: set attitude setpoint to idle
-			
-
-
-			
 			_att_sp.roll_body = _att_sp.pitch_body = 0.0f;
 			_att_sp.yaw_body = _local_pos.yaw;
 			_att_sp.yaw_sp_move_rate = 0.0f;
@@ -954,10 +760,6 @@ MulticopterSingleMotorControl::task_main()
 			q_sp.copyTo(_att_sp.q_d);
 			_att_sp.q_d_valid = true;
 			_att_sp.thrust = 0.0f;
-
-			*/
-			
-
 		}
 	}
 
@@ -965,7 +767,7 @@ MulticopterSingleMotorControl::task_main()
 }
 
 void
-MulticopterSingleMotorControl::start_flight_task()
+MulticopterSMPositionControl::start_flight_task()
 {
 	bool task_failure = false;
 
@@ -1024,7 +826,7 @@ MulticopterSingleMotorControl::start_flight_task()
 
 		int error = 0;
 
-		switch (MPC_POS_MODE.get()) {
+		switch (SM_POS_MODE.get()) {
 		case 0:
 			error =  _flight_tasks.switchTask(FlightTaskIndex::ManualPosition);
 			break;
@@ -1099,7 +901,7 @@ MulticopterSingleMotorControl::start_flight_task()
 }
 
 void
-MulticopterSingleMotorControl::check_for_smooth_takeoff(const float &z_sp, const float &vz_sp,
+MulticopterSMPositionControl::check_for_smooth_takeoff(const float &z_sp, const float &vz_sp,
 		const vehicle_constraints_s &constraints)
 {
 	// Check for smooth takeoff
@@ -1127,7 +929,7 @@ MulticopterSingleMotorControl::check_for_smooth_takeoff(const float &z_sp, const
 }
 
 void
-MulticopterSingleMotorControl::update_smooth_takeoff(const float &z_sp, const float &vz_sp)
+MulticopterSMPositionControl::update_smooth_takeoff(const float &z_sp, const float &vz_sp)
 {
 	// If in smooth takeoff, adjust setpoints based on what is valid:
 	// 1. position setpoint is valid -> go with takeoffspeed to specific altitude
@@ -1146,7 +948,7 @@ MulticopterSingleMotorControl::update_smooth_takeoff(const float &z_sp, const fl
 
 		// Smooth takeoff is achieved once desired altitude/velocity setpoint is reached.
 		if (PX4_ISFINITE(z_sp)) {
-			_in_smooth_takeoff = _states.position(2) - 0.2f > math::max(z_sp, _takeoff_reference_z - MPC_LAND_ALT2.get());
+			_in_smooth_takeoff = _states.position(2) - 0.2f > math::max(z_sp, _takeoff_reference_z - SM_LAND_ALT2.get());
 
 		} else  {
 			_in_smooth_takeoff = _takeoff_speed < -vz_sp;
@@ -1158,7 +960,7 @@ MulticopterSingleMotorControl::update_smooth_takeoff(const float &z_sp, const fl
 }
 
 void
-MulticopterSingleMotorControl::limit_thrust_during_landing(matrix::Vector3f &thr_sp)
+MulticopterSMPositionControl::limit_thrust_during_landing(matrix::Vector3f &thr_sp)
 {
 	if (_vehicle_land_detected.ground_contact) {
 		// Set thrust in xy to zero
@@ -1181,7 +983,7 @@ MulticopterSingleMotorControl::limit_thrust_during_landing(matrix::Vector3f &thr
 }
 
 void
-MulticopterSingleMotorControl::failsafe(vehicle_local_position_setpoint_s &setpoint, const SMPositionControlStates &states,
+MulticopterSMPositionControl::failsafe(vehicle_local_position_setpoint_s &setpoint, const SMPositionControlStates &states,
 				     const bool force)
 {
 	_failsafe_land_hysteresis.set_state_and_update(true);
@@ -1212,10 +1014,10 @@ MulticopterSingleMotorControl::failsafe(vehicle_local_position_setpoint_s &setpo
 }
 
 void
-MulticopterSingleMotorControl::update_avoidance_waypoint_desired(SMPositionControlStates &states,
+MulticopterSMPositionControl::update_avoidance_waypoint_desired(SMPositionControlStates &states,
 		vehicle_local_position_setpoint_s &setpoint)
 {
-	if (MPC_OBS_AVOID.get()) {
+	if (SM_OBS_AVOID.get()) {
 		const vehicle_trajectory_waypoint_s traj_wp_desired_new = _flight_tasks.getAvoidanceWaypoint();
 
 		if (traj_wp_desired_new.timestamp > _traj_wp_avoidance_desired.timestamp) {
@@ -1241,7 +1043,7 @@ MulticopterSingleMotorControl::update_avoidance_waypoint_desired(SMPositionContr
 }
 
 void
-MulticopterSingleMotorControl::execute_avoidance_waypoint()
+MulticopterSMPositionControl::execute_avoidance_waypoint()
 {
 	vehicle_local_position_setpoint_s setpoint;
 
@@ -1263,10 +1065,10 @@ MulticopterSingleMotorControl::execute_avoidance_waypoint()
 }
 
 bool
-MulticopterSingleMotorControl::use_obstacle_avoidance()
+MulticopterSMPositionControl::use_obstacle_avoidance()
 {
 	/* check that external obstacle avoidance is sending data and that the first point is valid */
-	return (MPC_OBS_AVOID.get()
+	return (SM_OBS_AVOID.get()
 		&& (hrt_elapsed_time((hrt_abstime *)&_traj_wp_avoidance.timestamp) < TRAJECTORY_STREAM_TIMEOUT_US)
 		&& (_traj_wp_avoidance.waypoints[vehicle_trajectory_waypoint_s::POINT_0].point_valid == true)
 		&& ((_vehicle_status.nav_state == vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) ||
@@ -1274,7 +1076,7 @@ MulticopterSingleMotorControl::use_obstacle_avoidance()
 }
 
 void
-MulticopterSingleMotorControl::publish_avoidance_desired_waypoint()
+MulticopterSMPositionControl::publish_avoidance_desired_waypoint()
 {
 	// publish desired waypoint
 	if (_traj_wp_avoidance_desired_pub != nullptr) {
@@ -1287,45 +1089,42 @@ MulticopterSingleMotorControl::publish_avoidance_desired_waypoint()
 }
 
 void
-MulticopterSingleMotorControl::publish_attitude()
+MulticopterSMPositionControl::publish_attitude()
 {
-
 	_att_sp.timestamp = hrt_absolute_time();
 
 	if (_att_sp_pub != nullptr) {
 		orb_publish(_attitude_setpoint_id, _att_sp_pub, &_att_sp);
+		//printf("Attitude setpoint: %f\n", (double) _att_sp.thrust);
 
 	} else if (_attitude_setpoint_id) {
 		_att_sp_pub = orb_advertise(_attitude_setpoint_id, &_att_sp);
-
-
-
 
 
 	}
 }
 
 void
-MulticopterSingleMotorControl::publish_local_sm_sp(const vehicle_local_position_setpoint_s &local_sm_sp)
+MulticopterSMPositionControl::publish_local_pos_sp(const vehicle_local_position_setpoint_s &local_pos_sp)
 {
 	// publish local position setpoint
-	if (_local_sm_sp_pub != nullptr) {
-		orb_publish(ORB_ID(vehicle_local_position_setpoint), _local_sm_sp_pub, &local_sm_sp);
+	if (_local_pos_sp_pub != nullptr) {
+		orb_publish(ORB_ID(vehicle_local_position_setpoint), _local_pos_sp_pub, &local_pos_sp);
 
 	} else {
-		_local_sm_sp_pub = orb_advertise(ORB_ID(vehicle_local_position_setpoint), &local_sm_sp);
+		_local_pos_sp_pub = orb_advertise(ORB_ID(vehicle_local_position_setpoint), &local_pos_sp);
 	}
 }
 
 int
-MulticopterSingleMotorControl::start()
+MulticopterSMPositionControl::start()
 {
 	// start the task
-	_control_task = px4_task_spawn_cmd("mc_sm_control",
+	_control_task = px4_task_spawn_cmd("mc_sm_pos_control",
 					   SCHED_DEFAULT,
 					   SCHED_PRIORITY_POSITION_CONTROL,
 					   1900,
-					   (px4_main_t)&MulticopterSingleMotorControl::task_main_trampoline,
+					   (px4_main_t)&MulticopterSMPositionControl::task_main_trampoline,
 					   nullptr);
 
 	if (_control_task < 0) {
@@ -1336,7 +1135,7 @@ MulticopterSingleMotorControl::start()
 	return OK;
 }
 
-void MulticopterSingleMotorControl::check_failure(bool task_failure, uint8_t nav_state)
+void MulticopterSMPositionControl::check_failure(bool task_failure, uint8_t nav_state)
 {
 	if (!task_failure) {
 		// we want to be in this mode, reset the failure count
@@ -1349,7 +1148,7 @@ void MulticopterSingleMotorControl::check_failure(bool task_failure, uint8_t nav
 	}
 }
 
-void MulticopterSingleMotorControl::send_vehicle_cmd_do(uint8_t nav_state)
+void MulticopterSMPositionControl::send_vehicle_cmd_do(uint8_t nav_state)
 {
 	vehicle_command_s command{};
 	command.command = vehicle_command_s::VEHICLE_CMD_DO_SET_MODE;
@@ -1387,30 +1186,30 @@ void MulticopterSingleMotorControl::send_vehicle_cmd_do(uint8_t nav_state)
 	}
 }
 
-int mc_sm_control_main(int argc, char *argv[])
+int mc_sm_pos_control_main(int argc, char *argv[])
 {
 	if (argc < 2) {
-		warnx("usage: mc_sm_control {start|stop|status}");
+		warnx("usage: mc_sm_pos_control {start|stop|status}");
 		return 1;
 	}
 
 	if (!strcmp(argv[1], "start")) {
 
-		if (sm_control::g_control != nullptr) {
+		if (pos_sm_control::g_control != nullptr) {
 			warnx("already running");
 			return 1;
 		}
 
-		sm_control::g_control = new MulticopterSingleMotorControl;
+		pos_sm_control::g_control = new MulticopterSMPositionControl;
 
-		if (sm_control::g_control == nullptr) {
+		if (pos_sm_control::g_control == nullptr) {
 			warnx("alloc failed");
 			return 1;
 		}
 
-		if (OK != sm_control::g_control->start()) {
-			delete sm_control::g_control;
-			sm_control::g_control = nullptr;
+		if (OK != pos_sm_control::g_control->start()) {
+			delete pos_sm_control::g_control;
+			pos_sm_control::g_control = nullptr;
 			warnx("start failed");
 			return 1;
 		}
@@ -1419,18 +1218,18 @@ int mc_sm_control_main(int argc, char *argv[])
 	}
 
 	if (!strcmp(argv[1], "stop")) {
-		if (sm_control::g_control == nullptr) {
+		if (pos_sm_control::g_control == nullptr) {
 			warnx("not running");
 			return 1;
 		}
 
-		delete sm_control::g_control;
-		sm_control::g_control = nullptr;
+		delete pos_sm_control::g_control;
+		pos_sm_control::g_control = nullptr;
 		return 0;
 	}
 
 	if (!strcmp(argv[1], "status")) {
-		if (sm_control::g_control) {
+		if (pos_sm_control::g_control) {
 			warnx("running");
 			return 0;
 

@@ -2729,10 +2729,7 @@ protected:
 				msg.controls[i] = att_ctrl.control[i];
 			}
 
-
-
-
-			//mavlink_msg_actuator_control_target_send_struct(_mavlink->get_channel(), &msg);
+			mavlink_msg_actuator_control_target_send_struct(_mavlink->get_channel(), &msg);
 
 			return true;
 		}

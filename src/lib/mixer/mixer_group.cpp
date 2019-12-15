@@ -151,7 +151,7 @@ MixerGroup::set_trims(int16_t *values, unsigned n)
  * The only other existing implementation is MultirotorMixer, which ignores the trim value
  * and returns _rotor_count.
  */
-unsigned
+unsigned 
 MixerGroup::get_trims(int16_t *values)
 {
 	Mixer	*mixer = _first;

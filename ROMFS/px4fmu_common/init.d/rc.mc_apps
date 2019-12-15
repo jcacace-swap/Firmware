@@ -54,10 +54,16 @@ fi
 #
 mc_att_control start
 
+
+# Start Multicopter Attitude Controller with single motor allocation and dynamic calculation.
+#mc_sm_att_control start
+
 #
 # Start Multicopter Position Controller.
 #
 mc_pos_control start
+#mc_sm_pos_control start
+
 
 #
 # Start Multicopter Single Motor Controller (position + attitude + PWM).

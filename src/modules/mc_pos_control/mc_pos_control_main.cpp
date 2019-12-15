@@ -745,6 +745,7 @@ MulticopterPositionControl::task_main()
 			// they might conflict with each other such as in offboard attitude control.
 			publish_attitude();
 
+
 		} else {
 			// no flighttask is active: set attitude setpoint to idle
 			_att_sp.roll_body = _att_sp.pitch_body = 0.0f;
@@ -1095,6 +1096,8 @@ MulticopterPositionControl::publish_attitude()
 
 	} else if (_attitude_setpoint_id) {
 		_att_sp_pub = orb_advertise(_attitude_setpoint_id, &_att_sp);
+
+
 	}
 }
 

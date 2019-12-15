@@ -33,24 +33,22 @@
  ****************************************************************************/
 
 /**
- * @file SMControlMath.cpp
+ * @file ControlMath.cpp
  */
 
 #include "SMControlMath.hpp"
 #include <platforms/px4_defines.h>
 #include <float.h>
 #include <mathlib/mathlib.h>
-#include <iostream>
 
-using namespace std;
 
 namespace SMControlMath
 {
+
+
+//Get the direction of the motion considering the position error. Generate the desired thrust considering the magnitude of the distance vector
 vehicle_attitude_setpoint_s thrustToAttitude(const matrix::Vector3f &thr_sp, const float yaw_sp)
 {
-
-
-	//cout << "In thrustToAttitude: " << thr_sp(0) << " " << thr_sp(1) << " " << thr_sp(2) << endl;
 
 	vehicle_attitude_setpoint_s att_sp = {};
 	att_sp.yaw_body = yaw_sp;
@@ -111,12 +109,8 @@ vehicle_attitude_setpoint_s thrustToAttitude(const matrix::Vector3f &thr_sp, con
 	att_sp.pitch_body = euler(1);
 	att_sp.thrust = thr_sp.length();
 
-
-	// 
-
-
-	//cout << "Attitude: " << att_sp.roll_body << " " << att_sp.pitch_body << " " << att_sp.thrust << endl;
-
+	printf("In SMcontrolMath: %f %f %f\n", (double)thr_sp(0), (double)thr_sp(1), (double)thr_sp(2));
+	printf("att_sp.thrust %f\n", (double)att_sp.thrust);
 	return att_sp;
 }
 

@@ -243,6 +243,8 @@ SimpleMixer *
 SimpleMixer::pwm_input(Mixer::ControlCallback control_cb, uintptr_t cb_handle, unsigned input, uint16_t min,
 		       uint16_t mid, uint16_t max)
 {
+
+
 	SimpleMixer *sm = nullptr;
 	mixer_simple_s *mixinfo = nullptr;
 
@@ -323,6 +325,8 @@ SimpleMixer::mix(float *outputs, unsigned space)
 			    input);
 
 		sum += scale(_pinfo->controls[i].scaler, input);
+
+
 	}
 
 	*outputs = scale(_pinfo->output_scaler, sum);

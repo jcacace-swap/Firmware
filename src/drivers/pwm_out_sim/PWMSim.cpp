@@ -226,8 +226,6 @@ PWMSim::run()
 				if (_poll_fds[poll_id].revents & POLLIN) {
 					orb_copy(_control_topics[i], _control_subs[i], &_controls[i]);
 					//printf("In PWMSIm, control[%d]: %f %f %f %f\n", i, (double)_controls[i].control[0], (double)_controls[i].control[1], (double)_controls[i].control[2], (double)_controls[i].control[3]); 
-
-
 				}
 
 				poll_id++;
@@ -238,6 +236,7 @@ PWMSim::run()
 		if (_armed && _mixers != nullptr) {
 
 			/* do mixing */
+			//std::cout << "IN PWMSim, output --PREMix--: " << _actuator_outputs.output[0] << " " << _actuator_outputs.output[1] << " " << _actuator_outputs.output[2] << " " << _actuator_outputs.output[3] << std::endl;
 
 			unsigned num_outputs = _mixers->mix(&_actuator_outputs.output[0], _num_outputs);
 			_actuator_outputs.noutputs = num_outputs;
@@ -252,7 +251,7 @@ PWMSim::run()
 			/* iterate actuators */
 
 
-			//std::cout << "IN PWMSim, output: " << _actuator_outputs.output[0] << " " << _actuator_outputs.output[1] << " " << _actuator_outputs.output[2] << " " << _actuator_outputs.output[3] << std::endl;
+			//std::cout << "IN PWMSim, output --AFTERMix--: " << _actuator_outputs.output[0] << " " << _actuator_outputs.output[1] << " " << _actuator_outputs.output[2] << " " << _actuator_outputs.output[3] << std::endl;
 			for (unsigned i = 0; i < num_outputs; i++) {
 				/* last resort: catch NaN, INF and out-of-band errors */
 				if (i < _actuator_outputs.noutputs &&
@@ -260,8 +259,10 @@ PWMSim::run()
 				    _actuator_outputs.output[i] >= -1.0f &&
 				    _actuator_outputs.output[i] <= 1.0f) {
 
+
 					/* scale for PWM output 1000 - 2000us */
 					_actuator_outputs.output[i] = 1500 + (500 * _actuator_outputs.output[i]);
+					//std::cout << "IN PWMSim, after scalePWM --PREMix--: " << _actuator_outputs.output[0] << " " << _actuator_outputs.output[1] << " " << _actuator_outputs.output[2] << " " << _actuator_outputs.output[3] << std::endl;
 
 					if (_actuator_outputs.output[i] > _pwm_max[i]) {
 						_actuator_outputs.output[i] = _pwm_max[i];
@@ -270,6 +271,7 @@ PWMSim::run()
 					if (_actuator_outputs.output[i] < _pwm_min[i]) {
 						_actuator_outputs.output[i] = _pwm_min[i];
 					}
+
 
 				} else {
 					/*

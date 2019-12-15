@@ -384,6 +384,7 @@ add_subdirectory(src/drivers/boards EXCLUDE_FROM_ALL)
 
 #Add single motor control
 set (config_module_list ${config_module_list} modules/mc_sm_control)
+set (config_module_list ${config_module_list} modules/mc_sm_pos_control)
 set (config_module_list ${config_module_list} modules/sm_ctrl_test)
 foreach(module ${config_module_list})
 

@@ -42,8 +42,6 @@
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
 #include <uORB/topics/vehicle_constraints.h>
-
-
 #include <px4_module_params.h>
 #pragma once
 
@@ -52,23 +50,6 @@ struct SMPositionControlStates {
 	matrix::Vector3f velocity;
 	matrix::Vector3f acceleration;
 	float yaw;
-};
-
-struct VEHICLE_ATTITUDE {
-	//Attitude
-	double qw;
-	double qx;
-	double qy;
-	double qz;
-
-	//dot Attotide
-	double droll;
-	double dpitch;
-	double dyaw;
-
-	double roll;
-	double pitch;
-	double yaw;
 };
 
 /**
@@ -122,11 +103,6 @@ public:
 	 */
 	void updateConstraints(const vehicle_constraints_s &constraints);
 
-
-	void set_vehicle_attitude( float qw,  float qx,  float qy,  float qz, float droll, float dpitch, float dyaw ); 
-
-
-
 	/**
 	 * Apply P-position and PID-velocity controller that updates the member
 	 * thrust, yaw- and yawspeed-setpoints.
@@ -161,9 +137,7 @@ public:
 	 * 	@see _yaw_sp
 	 * 	@return The yaw set-point member.
 	 */
-	const float &getYawSetpoint() { 
-		//printf("Yaw setpoint: %f\n", (double)_yaw_sp);
-		return _yaw_sp; }
+	const float &getYawSetpoint() { return _yaw_sp; }
 
 	/**
 	 * 	Get the
@@ -186,21 +160,14 @@ public:
 	 */
 	const matrix::Vector3f &getPosSp() { return _pos_sp; }
 
-
-	void geometric_tracking_control(const float dt); /**my own cartsian position control (to thrust) **/
-
-
-	
 protected:
 
 	void updateParams() override;
 
 private:
 	void _interfaceMapping(); /** maps set-points to internal member set-points */
-	void _SMPositionController(); /** applies the P-position-controller */
+	void _positionController(); /** applies the P-position-controller */
 	void _velocityController(const float &dt); /** applies the PID-velocity-controller */
-
-	void controller(float dt);
 
 	matrix::Vector3f _pos{}; /**< MC position */
 	matrix::Vector3f _vel{}; /**< MC velocity */
@@ -216,52 +183,25 @@ private:
 	matrix::Vector3f _thr_int{}; /**< thrust integral term */
 	vehicle_constraints_s _constraints{}; /**< variable constraints */
 	bool _skip_controller{false}; /**< skips position/velocity controller. true for stabilized mode */
-	
-	/*
-	matrix::Vector3f _e_p{};
-	matrix::Vector3f _e_dp{};
-	matrix::Vector3f _kp{};
-	matrix::Vector3f _kv{};
-	matrix::Vector3f _ki{};
-	matrix::Vector3f _mu{};
-	matrix::Vector3f _e_pp{};
-	*/
-
-	matrix::Vector3f _b1d_p{};
-	matrix::Vector3f _b1d_1dot_p{};
-	matrix::Vector3f _vel_d_p{}; 
-	matrix::Vector3f _acc_d_p{};
-	matrix::Vector3f _acc_p{};
-	matrix::Vector3f _jerk_d_p{};
-
-
-	VEHICLE_ATTITUDE _att;
 
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::MPC_THR_MAX>) MPC_THR_MAX,
-		(ParamFloat<px4::params::MPC_THR_HOVER>) MPC_THR_HOVER,
-		(ParamFloat<px4::params::MPC_THR_MIN>) MPC_THR_MIN,
-		(ParamFloat<px4::params::MPC_MANTHR_MIN>) MPC_MANTHR_MIN,
-		(ParamFloat<px4::params::MPC_XY_VEL_MAX>) MPC_XY_VEL_MAX,
-		(ParamFloat<px4::params::MPC_Z_VEL_MAX_DN>) MPC_Z_VEL_MAX_DN,
-		(ParamFloat<px4::params::MPC_Z_VEL_MAX_UP>) MPC_Z_VEL_MAX_UP,
-		(ParamFloat<px4::params::MPC_TILTMAX_AIR>)
-		MPC_TILTMAX_AIR_rad, // maximum tilt for any position controlled mode in radians
-		(ParamFloat<px4::params::MPC_MAN_TILT_MAX>) MPC_MAN_TILT_MAX_rad, // maximum til for stabilized/altitude mode in radians
-		(ParamFloat<px4::params::MPC_Z_P>) MPC_Z_P,
-		(ParamFloat<px4::params::MPC_Z_VEL_P>) MPC_Z_VEL_P,
-		(ParamFloat<px4::params::MPC_Z_VEL_I>) MPC_Z_VEL_I,
-		(ParamFloat<px4::params::MPC_Z_VEL_D>) MPC_Z_VEL_D,
-		(ParamFloat<px4::params::MPC_XY_P>) MPC_XY_P,
-		(ParamFloat<px4::params::MPC_XY_VEL_P>) MPC_XY_VEL_P,
-		(ParamFloat<px4::params::MPC_XY_VEL_I>) MPC_XY_VEL_I,
-		(ParamFloat<px4::params::MPC_XY_VEL_D>) MPC_XY_VEL_D
+		(ParamFloat<px4::params::SM_THR_MAX>) SM_THR_MAX,
+		(ParamFloat<px4::params::SM_THR_HOVER>) SM_THR_HOVER,
+		(ParamFloat<px4::params::SM_THR_MIN>) SM_THR_MIN,
+		(ParamFloat<px4::params::SM_MANTHR_MIN>) SM_MANTHR_MIN,
+		(ParamFloat<px4::params::SM_XY_VEL_MAX>) SM_XY_VEL_MAX,
+		(ParamFloat<px4::params::SM_Z_VEL_MAX_DN>) SM_Z_VEL_MAX_DN,
+		(ParamFloat<px4::params::SM_Z_VEL_MAX_UP>) SM_Z_VEL_MAX_UP,
+		(ParamFloat<px4::params::SM_TILTMAX_AIR>)
+		SM_TILTMAX_AIR_rad, // maximum tilt for any position controlled mode in radians
+		(ParamFloat<px4::params::SM_MAN_TILT_MAX>) SM_MAN_TILT_MAX_rad, // maximum til for stabilized/altitude mode in radians
+		(ParamFloat<px4::params::SM_Z_P>) SM_Z_P,
+		(ParamFloat<px4::params::SM_Z_VEL_P>) SM_Z_VEL_P,
+		(ParamFloat<px4::params::SM_Z_VEL_I>) SM_Z_VEL_I,
+		(ParamFloat<px4::params::SM_Z_VEL_D>) SM_Z_VEL_D,
+		(ParamFloat<px4::params::SM_XY_P>) SM_XY_P,
+		(ParamFloat<px4::params::SM_XY_VEL_P>) SM_XY_VEL_P,
+		(ParamFloat<px4::params::SM_XY_VEL_I>) SM_XY_VEL_I,
+		(ParamFloat<px4::params::SM_XY_VEL_D>) SM_XY_VEL_D
 	)
 };
-
-float dot_prod( matrix::Vector3f a, matrix::Vector3f b );
-matrix::Vector3f cross_prod( matrix::Vector3f a, matrix::Vector3f b );
-matrix::SquareMatrix<float, 3> point_prod( matrix::SquareMatrix<float, 3> A, matrix::SquareMatrix<float, 3> B);
-matrix::Vector3f vee( matrix::SquareMatrix<float, 3>  R );
-matrix::SquareMatrix<float, 3> hat( matrix::Vector3f v);
-float trace(  matrix::SquareMatrix<float, 3>  R );

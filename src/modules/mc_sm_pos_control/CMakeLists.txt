@@ -1,6 +1,6 @@
 ############################################################################
 #
-#   Copyright (c) 2018 PX4 Development Team. All rights reserved.
+#   Copyright (c) 2015 PX4 Development Team. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,19 +30,18 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 ############################################################################
-
 px4_add_module(
-	MODULE 	modules__mc_sm_att_control
-	MAIN mc_sm_att_control
+	MODULE modules__mc_sm_pos_control
+	MAIN mc_sm_pos_control
 	COMPILE_FLAGS
 	STACK_MAIN 1200
 	SRCS
-		mc_sm_att_control_main.cpp
-	DEPENDS	
+		mc_sm_pos_control_main.cpp
+		SMPositionControl.cpp
+		Utility/SMControlMath.cpp
+	DEPENDS
 		controllib
 		FlightTasks
 		git_ecl
-		ecl_geo	
-		modules__uORB
+		ecl_geo
 	)
-
