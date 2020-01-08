@@ -103,6 +103,7 @@
 #include <uORB/topics/sensor_mag.h>
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_magnetometer.h>
+#include <uORB/topics/body_ft.h>
 #include <uORB/uORB.h>
 
 
@@ -307,6 +308,7 @@ public:
 
 	static uint16_t get_id_static()
 	{
+		//for(int i=0; i<100; i++ ) printf("in MavlinkStreamHeartbeat!\n");
 		return MAVLINK_MSG_ID_HEARTBEAT;
 	}
 
@@ -340,7 +342,9 @@ private:
 protected:
 	explicit MavlinkStreamHeartbeat(Mavlink *mavlink) : MavlinkStream(mavlink),
 		_status_sub(_mavlink->add_orb_subscription(ORB_ID(vehicle_status)))
-	{}
+	{
+
+	}
 
 	bool send(const hrt_abstime t)
 	{
@@ -359,6 +363,7 @@ protected:
 
 		mavlink_msg_heartbeat_send(_mavlink->get_channel(), _mavlink->get_system_type(), MAV_AUTOPILOT_PX4,
 					   base_mode, custom_mode, system_status);
+
 
 		return true;
 	}
@@ -497,6 +502,111 @@ protected:
 		return sent;
 	}
 };
+
+
+
+
+class MavlinkStreamForceTorque : public MavlinkStream
+{
+public:
+const char *get_name() const
+	{
+		return MavlinkStreamForceTorque::get_name_static();
+	}
+
+	static const char *get_name_static()
+	{
+		return "FORCE_TORQUE";
+	}
+
+	static uint16_t get_id_static()
+	{
+		return 0;
+	}
+
+	uint16_t get_id()
+	{
+		return get_id_static();
+	}
+
+	static MavlinkStream *new_instance(Mavlink *mavlink)
+	{
+		return new MavlinkStreamForceTorque(mavlink);
+	}
+
+	unsigned get_size()
+	{
+		return MAVLINK_MSG_ID_COMMAND_LONG_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES;
+	}
+
+private:
+	MavlinkOrbSubscription *_body_ft_sub;
+
+	/* do not allow top copying this class */
+	MavlinkStreamForceTorque(MavlinkStreamForceTorque &) = delete;
+	MavlinkStreamForceTorque &operator = (const MavlinkStreamForceTorque &) = delete;
+
+protected:
+	explicit MavlinkStreamForceTorque(Mavlink *mavlink) : MavlinkStream(mavlink),
+		_body_ft_sub(_mavlink->add_orb_subscription(ORB_ID(body_ft)))
+	{
+
+
+	}
+
+	bool send(const hrt_abstime t)
+	{	
+
+		struct body_ft_s bft {};		/**< vehicle rates setpoint */
+		bool updated = _body_ft_sub->update(&bft);
+	
+		if( updated ) {
+			_body_ft_sub->update(&bft);
+			mavlink_command_long_t msg = {};
+			msg.target_system = 0;
+			msg.target_component = MAV_COMP_ID_ALL;
+			msg.command = MAV_CMD_DO_CONTROL_VIDEO;
+
+			msg.confirmation = 0;
+			msg.param1 = bft.thrust;
+			msg.param2 = bft.mu_phi;
+			msg.param3 = bft.mu_theta;
+			msg.param4 = bft.mu_psi;
+
+			msg.param5 = 0;
+			msg.param6 = 0;
+			msg.param7 = 0;
+			mavlink_msg_command_long_send_struct(_mavlink->get_channel(), &msg);
+
+		}
+		/*
+
+		if (!_body_ft_sub->update(&bft)) {
+			//memset(&bft, 0, sizeof(bft));
+		}
+		else {
+	
+			mavlink_command_long_t msg = {};
+			msg.target_system = 0;
+			msg.target_component = MAV_COMP_ID_ALL;
+			msg.command = MAV_CMD_DO_CONTROL_VIDEO;
+
+			msg.confirmation = 0;
+			msg.param1 = bft.thrust;
+			msg.param2 = bft.mu_phi;
+			msg.param3 = bft.mu_theta;
+			msg.param4 = bft.mu_psi;
+			
+			msg.param5 = 0;
+			msg.param6 = 0;
+			msg.param7 = 0;
+			mavlink_msg_command_long_send_struct(_mavlink->get_channel(), &msg);
+		}
+		*/
+		return true;
+	}
+};
+
 
 class MavlinkStreamSysStatus : public MavlinkStream
 {
@@ -1837,6 +1947,8 @@ protected:
 
 				// TODO: move this camera_trigger and publish as a vehicle_command
 				/* send MAV_CMD_DO_DIGICAM_CONTROL*/
+
+				/*
 				mavlink_command_long_t digicam_ctrl_cmd = {};
 
 				digicam_ctrl_cmd.target_system = 0; // 0 for broadcast
@@ -1852,6 +1964,7 @@ protected:
 				digicam_ctrl_cmd.param7 = NAN;
 
 				mavlink_msg_command_long_send_struct(_mavlink->get_channel(), &digicam_ctrl_cmd);
+				*/
 
 				return true;
 			}
@@ -3856,7 +3969,7 @@ protected:
 		vehicle_status_s status;
 
 		if (_status_sub->update(&status)) {
-
+			
 			mavlink_command_long_t msg = {};
 
 			msg.target_system = 0;
@@ -3866,13 +3979,13 @@ protected:
 			msg.param1 = 0;
 			msg.param2 = 0;
 			msg.param3 = 0;
-			/* set camera capture ON/OFF depending on arming state */
 			msg.param4 = (status.arming_state == vehicle_status_s::ARMING_STATE_ARMED) ? 1 : 0;
 			msg.param5 = 0;
 			msg.param6 = 0;
 			msg.param7 = 0;
 
 			mavlink_msg_command_long_send_struct(_mavlink->get_channel(), &msg);
+			
 		}
 
 		return true;
@@ -4523,6 +4636,7 @@ protected:
 };
 
 static const StreamListItem streams_list[] = {
+	StreamListItem(&MavlinkStreamForceTorque::new_instance, &MavlinkStreamForceTorque::get_name_static, &MavlinkStreamForceTorque::get_id_static),
 	StreamListItem(&MavlinkStreamHeartbeat::new_instance, &MavlinkStreamHeartbeat::get_name_static, &MavlinkStreamHeartbeat::get_id_static),
 	StreamListItem(&MavlinkStreamStatustext::new_instance, &MavlinkStreamStatustext::get_name_static, &MavlinkStreamStatustext::get_id_static),
 	StreamListItem(&MavlinkStreamCommandLong::new_instance, &MavlinkStreamCommandLong::get_name_static, &MavlinkStreamCommandLong::get_id_static),
@@ -4578,6 +4692,7 @@ static const StreamListItem streams_list[] = {
 	StreamListItem(&MavlinkStreamHighLatency2::new_instance, &MavlinkStreamHighLatency2::get_name_static, &MavlinkStreamHighLatency2::get_id_static),
 	StreamListItem(&MavlinkStreamGroundTruth::new_instance, &MavlinkStreamGroundTruth::get_name_static, &MavlinkStreamGroundTruth::get_id_static),
 	StreamListItem(&MavlinkStreamPing::new_instance, &MavlinkStreamPing::get_name_static, &MavlinkStreamPing::get_id_static)
+	
 };
 
 const char *get_stream_name(const uint16_t msg_id)
@@ -4586,6 +4701,8 @@ const char *get_stream_name(const uint16_t msg_id)
 	for (const auto &stream : streams_list) {
 		if (msg_id == stream.get_id()) {
 			return stream.get_name();
+		}
+		else {
 		}
 	}
 

@@ -283,6 +283,8 @@ MulticopterAttitudeControl::vehicle_status_poll()
 			} else {
 				_rates_sp_id = ORB_ID(vehicle_rates_setpoint);
 				_actuators_id = ORB_ID(actuator_controls_0);
+				_body_ft_id = ORB_ID( body_ft );
+	
 			}
 		}
 	}
@@ -640,6 +642,7 @@ MulticopterAttitudeControl::run()
 
 	while (!should_exit()) {
 
+
 		poll_fds.fd = _sensor_gyro_sub[_selected_gyro];
 
 		/* wait for up to 100ms for data */
@@ -710,6 +713,21 @@ MulticopterAttitudeControl::run()
 				_v_rates_sp.thrust = _thrust_sp;
 				_v_rates_sp.timestamp = hrt_absolute_time();
 
+				
+
+				_body_ft.thrust 	= _thrust_sp;
+				_body_ft.mu_phi 	= _rates_sp(0);
+				_body_ft.mu_theta 	= _rates_sp(1);
+				_body_ft.mu_psi 	= _rates_sp(2);
+
+				if ( _body_ft_pub != nullptr ) {
+					orb_publish( _body_ft_id, _body_ft_pub, &_body_ft );
+					//printf("Att: %f\n", (double)_body_ft.thrust);
+				}
+				else if ( _body_ft_id  ) {
+					_body_ft_pub = orb_advertise ( _body_ft_id, &_body_ft );
+				}
+
 				if (_v_rates_sp_pub != nullptr) {
 					orb_publish(_rates_sp_id, _v_rates_sp_pub, &_v_rates_sp);
 
@@ -741,6 +759,8 @@ MulticopterAttitudeControl::run()
 					} else if (_rates_sp_id) {
 						_v_rates_sp_pub = orb_advertise(_rates_sp_id, &_v_rates_sp);
 					}
+
+					
 
 				} else {
 					/* attitude controller disabled, poll rates setpoint topic */
