@@ -1106,6 +1106,7 @@ Mavlink::find_broadcast_address()
 		}
 	}
 
+	printf("_broadcast_address_found: %d", _broadcast_address_found);
 	if (_broadcast_address_found) {
 		_bcast_addr.sin_port = htons(_remote_port);
 
@@ -1838,6 +1839,9 @@ Mavlink::configure_streams_to_default(const char *configure_single_stream)
 int
 Mavlink::task_main(int argc, char *argv[])
 {
+
+	//for(int i=0; i<100; i++)printf("taskMain\n");
+
 	int ch;
 	_baudrate = 57600;
 	_datarate = 0;
@@ -2595,6 +2599,10 @@ int Mavlink::start_helper(int argc, char *argv[])
 int
 Mavlink::start(int argc, char *argv[])
 {
+
+
+
+
 	MavlinkULog::initialize();
 	MavlinkCommandSender::initialize();
 
@@ -2975,6 +2983,8 @@ $ mavlink stream -u 14556 -s HIGHRES_IMU -r 50
 
 int mavlink_main(int argc, char *argv[])
 {
+
+
 	if (argc < 2) {
 		usage();
 		return 1;

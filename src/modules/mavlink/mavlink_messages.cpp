@@ -2740,8 +2740,6 @@ protected:
 
 			mavlink_msg_servo_output_raw_send_struct(_mavlink->get_channel(), &msg);
 
-			//printf("Actuator output: %f %f %f %f!\n", (double)msg.servo1_raw, (double)msg.servo2_raw, (double)msg.servo3_raw, (double)msg.servo4_raw);
-		
 			return true;
 		}
 
